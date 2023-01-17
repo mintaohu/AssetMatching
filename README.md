@@ -10,7 +10,7 @@ SuperGlue here operates as the "middle-end," performing context aggregation, mat
 Two thresholds are used to operate as the "back-end", making prediction based on the results from superglue.
 
 
-## Evaluation Result
+## Evaluation Results
 
 Recall = 92.1% (based on 7500 pos instances)
 <p align="center">
@@ -25,7 +25,7 @@ Specificity = 98.8% (based on 7500 neg instances)
 Approximated accuracy  ≈ 97.1% (based on 7500 pos instances and 22500 neg instances)
 
 
-Example matches on real case:
+## Example matches on real cases:
 <p align="center">
   <img src="assets/rotation_s1.png" width="400">
 </p>
