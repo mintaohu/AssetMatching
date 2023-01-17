@@ -3,5 +3,4 @@ data/
 simpletest/
 
 *.txt
-*.png
 ORB.py
