@@ -2,6 +2,7 @@ import cv2
 import os
 from matplotlib import pyplot as plt
 import pandas as pd
+import numpy as np
 
 
 def feature_matching(asset, img, horizontal_flip_toggle):
@@ -24,8 +25,11 @@ def feature_matching(asset, img, horizontal_flip_toggle):
     sift = cv2.SIFT_create()
 
     # Compute SIFT keypoints and descriptors
-    kp1, des1 = sift.detectAndCompute(image1, None)
-    kp2, des2 = sift.detectAndCompute(image0, None)
+    kp1, des1 = sift.detectAndCompute(image0, None)
+    kp2, des2 = sift.detectAndCompute(image1, None)
+
+    print(des1)
+    print(des2.shape)
 
     # FLANN parameters and initialize
     FLANN_INDEX_KDTREE = 1
@@ -51,28 +55,28 @@ def feature_matching(asset, img, horizontal_flip_toggle):
     # Store all good matches as per Lowe's Ratio test.
     good = []
     for m, n in matches:
-        if m.distance < 0.6 * n.distance or n.distance < 0.6 * m.distance:
+        if m.distance < 0.6 * n.distance:
             good.append(m)
-            matchesMask.append([1, 0])  # Match
+            matchesMask.append([0, 0])  # Match
         else:
             matchesMask.append([0, 0])  # Mismatch
 
 
-    # # Draw all good matches
-    # draw_params = dict(  # matchColor = (0,255,0),  #If you want a specific colour
-    #     # singlePointColor = (255,0,0), #If you want a specific colour
-    #     matchesMask=matchesMask,
-    #     flags=cv2.DrawMatchesFlags_DEFAULT)
-    #
-    # good_matches = cv2.drawMatchesKnn(image1, kp1, image0, kp2, matches, None, **draw_params)
-    #
-    # plt.figure(figsize=(15, 15))
-    #
-    # plt.imshow(good_matches)
-    # plt.title('All good matches')
-    # plt.axis('off')
-    #
-    # plt.show()
+    # Draw all good matches
+    draw_params = dict(  # matchColor = (0,255,0),  #If you want a specific colour
+        # singlePointColor = (255,0,0), #If you want a specific colour
+        matchesMask=matchesMask,
+        flags=cv2.DrawMatchesFlags_DEFAULT)
+
+    good_matches = cv2.drawMatchesKnn(image0, kp1, image1, kp2, matches, None, **draw_params)
+
+    plt.figure(figsize=(15, 15))
+
+    plt.imshow(good_matches)
+    plt.title('All good matches')
+    plt.axis('off')
+
+    plt.show()
 
     MIN_MATCH_NUM = 1
 
@@ -85,14 +89,14 @@ def feature_matching(asset, img, horizontal_flip_toggle):
 data = pd.read_csv("data/test/labels.csv")
 
 # Ratio of positive to negative samples = 1:3
-# neg_data = data.iloc[:273908,:]
-# neg_data = neg_data.sample(frac=1)
-# neg_data = neg_data.iloc[:22500,:]
-#
-# pos_data= data.iloc[273908:273908+7500,:]
-#
-# mixed_data = pd.concat([pos_data, neg_data])
-# mixed_data = mixed_data.sample(frac=1)
+neg_data = data.iloc[:273908,:]
+neg_data = neg_data.sample(frac=1)
+neg_data = neg_data.iloc[:22500,:]
+
+pos_data= data.iloc[273908:273908+7500,:]
+
+mixed_data = pd.concat([pos_data, neg_data])
+mixed_data = mixed_data.sample(frac=1)
 
 
 # shuffle pos data
@@ -100,9 +104,9 @@ pos_data= data.iloc[273908:273908+7500,:]
 pos_data = pos_data.sample(frac=1)
 
 # shuffle neg data
-# neg_data = data.iloc[:273908,:]
-# neg_data = neg_data.sample(frac=1)
-# neg_data = neg_data.iloc[:7500,:]
+neg_data = data.iloc[:273908,:]
+neg_data = neg_data.sample(frac=1)
+neg_data = neg_data.iloc[:7500,:]
 
 
 
@@ -112,18 +116,18 @@ pos_data = pos_data.sample(frac=1)
 img_root = "data/test/temp/"
 asset_root = "data/test/img/"
 
-
-
 # Single instance testing
 # plt.axis('off')
-# prediction = feature_matching(os.path.join(asset_root, data.iloc[273913, 0]), os.path.join(img_root, data.iloc[273913, 1]), 0)
-# print(prediction)
+# idx = 275174
+# prediction = feature_matching(os.path.join(asset_root, data.iloc[idx, 0]), os.path.join(img_root, data.iloc[idx, 1]), 0)
 
+
+
+# Recall = (TP/TP+FN)
 num_correct_predictions = 0
 l_acc = []
 l_batch_no = []
 
-# Recall = (TP/TP+FN)
 for i in range(len(pos_data)):
     prediction = feature_matching(os.path.join(asset_root, pos_data.iloc[i, 0]), os.path.join(img_root, pos_data.iloc[i, 1]), 0)
     hf_prediction = feature_matching(os.path.join(asset_root, pos_data.iloc[i, 0]), os.path.join(img_root, pos_data.iloc[i, 1]), 1)
@@ -140,46 +144,65 @@ for i in range(len(pos_data)):
         l_acc.append(accuracy)
         print("current accuracy is: ", accuracy)
 
+# plot the figure
+plt.figure()
+plt.plot(l_batch_no, l_acc)
+plt.xticks(range(1, max(l_batch_no)+1))
+plt.savefig('recall_result.png')
+
 
 # Specificity = TN/TN+FP
-# for i in range(len(neg_data)):
-#     prediction = feature_matching(os.path.join(asset_root, neg_data.iloc[i, 0]), os.path.join(img_root, neg_data.iloc[i, 1]), 0)
-#     hf_prediction = feature_matching(os.path.join(asset_root, neg_data.iloc[i, 0]), os.path.join(img_root, neg_data.iloc[i, 1]), 1)
-#
-#     if prediction == int(neg_data.iloc[i, 2]) or hf_prediction == int(neg_data.iloc[i, 2]):
-#         num_correct_predictions += 1
-#
-#     if (i+1) % 500 == 0:
-#         batch_no = int((i+1)/500)
-#         l_batch_no.append(batch_no)
-#         print("number of predictions: ", i+1)
-#         accuracy = num_correct_predictions/(i+1)
-#         l_acc.append(accuracy)
-#         print("current accuracy is: ", num_correct_predictions/(i+1))
+num_correct_predictions = 0
+l_acc = []
+l_batch_no = []
 
+for i in range(len(neg_data)):
+    prediction = feature_matching(os.path.join(asset_root, neg_data.iloc[i, 0]), os.path.join(img_root, neg_data.iloc[i, 1]), 0)
+    hf_prediction = feature_matching(os.path.join(asset_root, neg_data.iloc[i, 0]), os.path.join(img_root, neg_data.iloc[i, 1]), 1)
 
-# Accuracy = (TP+TN)/(TP+FP+TN+FN)
-# for i in range(len(mixed_data)):
-#     prediction = feature_matching(os.path.join(asset_root, mixed_data.iloc[i, 0]), os.path.join(img_root, mixed_data.iloc[i, 1]), 0)
-#     hf_prediction = feature_matching(os.path.join(asset_root, mixed_data.iloc[i, 0]), os.path.join(img_root, mixed_data.iloc[i, 1]), 1)
-#
-#     if prediction == int(mixed_data.iloc[i, 2]) or hf_prediction == int(mixed_data.iloc[i, 2]):
-#         num_correct_predictions += 1
-#
-#     if (i+1) % 2000 == 0:
-#         batch_no = int((i+1)/2000)
-#         l_batch_no.append(batch_no)
-#         print("number of predictions: ", i+1)
-#         accuracy = num_correct_predictions/(i+1)
-#         l_acc.append(accuracy)
-#         print("current accuracy is: ", accuracy)
+    if prediction == int(neg_data.iloc[i, 2]) or hf_prediction == int(neg_data.iloc[i, 2]):
+        num_correct_predictions += 1
+
+    if (i+1) % 500 == 0:
+        batch_no = int((i+1)/500)
+        l_batch_no.append(batch_no)
+        print("number of predictions: ", i+1)
+        accuracy = num_correct_predictions/(i+1)
+        l_acc.append(accuracy)
+        print("current accuracy is: ", num_correct_predictions/(i+1))
 
 # plot the figure
 plt.figure()
 plt.plot(l_batch_no, l_acc)
 plt.xticks(range(1, max(l_batch_no)+1))
-plt.show()
+plt.savefig('specificity_result.png')
 
+
+# Accuracy = (TP+TN)/(TP+FP+TN+FN)
+num_correct_predictions = 0
+l_acc = []
+l_batch_no = []
+
+for i in range(len(mixed_data)):
+    prediction = feature_matching(os.path.join(asset_root, mixed_data.iloc[i, 0]), os.path.join(img_root, mixed_data.iloc[i, 1]), 0)
+    hf_prediction = feature_matching(os.path.join(asset_root, mixed_data.iloc[i, 0]), os.path.join(img_root, mixed_data.iloc[i, 1]), 1)
+
+    if prediction == int(mixed_data.iloc[i, 2]) or hf_prediction == int(mixed_data.iloc[i, 2]):
+        num_correct_predictions += 1
+
+    if (i+1) % 2000 == 0:
+        batch_no = int((i+1)/2000)
+        l_batch_no.append(batch_no)
+        print("number of predictions: ", i+1)
+        accuracy = num_correct_predictions/(i+1)
+        l_acc.append(accuracy)
+        print("current accuracy is: ", accuracy)
+
+# plot the figure
+plt.figure()
+plt.plot(l_batch_no, l_acc)
+plt.xticks(range(1, max(l_batch_no)+1))
+plt.savefig('accuracy_result.png')
 
 
 
