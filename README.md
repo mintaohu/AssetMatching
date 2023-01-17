@@ -1,5 +1,5 @@
 ## Introduction
-This repo contains a pretrained SuperPoint network and a pretrained SuperGlue network. The combination of two neural networks is used to do template matching between an image and a game asset. Prediction about whether this image belongs to the game asset will be made based on the matching result.
+This repo contains a pretrained SuperPoint network and a pretrained SuperGlue network. The combination of two neural networks is used to do feature matching between an image and a game asset. Prediction about whether this image belongs to the game asset will be made based on the matching result.
 
 SuperPoint here operates as the "front-end," detecting interest points and computing their accompanying descriptors.  For more details please see:
 * Full paper PDF: [SuperPoint: Self-Supervised Interest Point Detection and Description](https://arxiv.org/abs/1712.07629)
