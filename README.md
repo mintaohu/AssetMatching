@@ -25,7 +25,7 @@ Specificity = 98.8% (based on 7500 neg instances)
 Approximated accuracy  ≈ 97.1% (based on 7500 pos instances and 22500 neg instances)
 
 
-## Example matches on real cases:
+## Example matches on real cases
 <p align="center">
   <img src="assets/rotation_s1.png" width="400">
 </p>
