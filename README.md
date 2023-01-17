@@ -11,20 +11,18 @@ Two thresholds are used to operate as the "back-end", making prediction based on
 
 
 ## Evaluation Result
-Testing dataset: 
-https://drive.google.com/file/d/1j1LnTWPRS-XUiFFG3lyWnqagW2QUL84d/view?usp=sharing
 
 Recall = 92.1% (based on 7500 pos instances)
 <p align="center">
   <img src="assets/recall_result.png" width="400">
 </p>
 
-Specificity = (based on 7500 neg instances)
+Specificity = 98.8% (based on 7500 neg instances)
 <p align="center">
   <img src="assets/specificity_result.png" width="400">
 </p>
 
-Approximated accuracy  ≈ (based on 7500 pos instances and 22500 neg instances)
+Approximated accuracy  ≈ 97.1% (based on 7500 pos instances and 22500 neg instances)
 
 
 Example matches on real case:
