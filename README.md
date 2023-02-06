@@ -9,6 +9,18 @@ SuperGlue here operates as the "middle-end," performing context aggregation, mat
 
 Two thresholds are used to operate as the "back-end", making prediction based on the results from superglue.
 
+## Dependencies
+* Python 3 >= 3.10
+* PyTorch >= 1.12
+* OpenCV >= 4.6
+* Matplotlib >= 3.6
+* NumPy >= 1.23
+
+
+## Matching
+```
+python test.py -asset ASSET_PATH -img IMG_PATH
+```
 
 ## Evaluation Results
 
