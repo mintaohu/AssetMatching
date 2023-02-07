@@ -141,7 +141,7 @@ def plot_matches(asset_idx, l_image0_pos, scale0, show_selection, kpts0, kpts1, 
 
     # Discard outliers
     l_kpts0 = kpts0.tolist()
-    for idx in outlier:
+    for idx in reversed(outlier):
         del l_kpts0[idx]
     kpts0 = np.array(l_kpts0)
 
