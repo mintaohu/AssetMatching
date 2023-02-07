@@ -39,24 +39,13 @@ Approximated accuracy  ≈ 97.1% (based on 7500 pos instances and 22500 neg inst
 
 ## Example matches on real cases
 <p align="center">
-  <img src="assets/rotation_s1.png" width="400">
+  <img src="assets/1.png" width="1000">
 </p>
 <p align="center">
-  <img src="assets/ori_s1.png" width="400">
+  <img src="assets/2.png" width="1000">
 </p>
 <p align="center">
-  <img src="assets/flip_s1_2.png" width="400">
+  <img src="assets/3.png" width="1000">
 </p>
-<p align="center">
-  <img src="assets/flip_s1.png" width="400">
-</p>
-<p align="center">
-  <img src="assets/button_scale05_s1.png" width="400">
-</p>
-<p align="center">
-  <img src="assets/button_ori_s1.png" width="400">
-</p>
-<p align="center">
-  <img src="assets/button_lang_s1.png" width="400">
-</p>
+
 
