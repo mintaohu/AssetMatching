@@ -1,15 +1,36 @@
 import cv2
-import os
-from matplotlib import pyplot as plt
-import pandas as pd
 import numpy as np
+import argparse
+import pandas as pd
+import time
+
+from utils import discard_outliers, plot_image_pair, plot_matches, find_image
 
 
-def feature_matching(asset, img, horizontal_flip_toggle):
+
+# SIFT(find key points) + FLANN(fast keypoints match) + Z-score iteration(discard outliers)
+def feature_matching(asset, img, show_match):
+
+    # Initiate SIFT detector
+    sift = cv2.SIFT_create()
+
+    # FLANN parameters and initialize
+    FLANN_INDEX_KDTREE = 1
+    index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+    search_params = dict(checks=50)  # or pass empty dictionary
+    flann = cv2.FlannBasedMatcher(index_params, search_params)
+
     # Read in images from a filepath as graycsale.
     image0 = cv2.imread(asset, cv2.IMREAD_GRAYSCALE)
     image1 = cv2.imread(img, cv2.IMREAD_GRAYSCALE)
+    if image0 is None:
+        print('ASSET NOT FOUND')
+        return [1, 2, 3]
+    if image1 is None:
+        print('IMAGE NOT FOUND')
+        return [1,2,3]
 
+    # Add padding to image
     if image1.shape[0] < image0.shape[0]:
         vertical_padding = int((image0.shape[0] - image1.shape[0]) / 2)
         image1 = cv2.copyMakeBorder(image1, vertical_padding, vertical_padding, 0, 0, cv2.BORDER_CONSTANT)
@@ -18,199 +39,90 @@ def feature_matching(asset, img, horizontal_flip_toggle):
         horizontal_padding = int((image0.shape[1] - image1.shape[1]) / 2)
         image1 = cv2.copyMakeBorder(image1, 0, 0, horizontal_padding, horizontal_padding, cv2.BORDER_CONSTANT)
 
-    if horizontal_flip_toggle:
-        image1 = cv2.flip(image1, 1)
+    # Multiple variants matching
+    l_image1 = []
+    image1_hor_flip = cv2.flip(image1, 1)
+    image1_ver_flip = cv2.flip(image1, 0)
+    l_image1.append(image1)
+    l_image1.append(image1_hor_flip)
+    l_image1.append(image1_ver_flip)
 
-    # Initiate SIFT detector
-    sift = cv2.SIFT_create()
+    max_mpts0 = []
+    for img in l_image1:
+        # Compute SIFT keypoints and descriptors
+        kp0, des0 = sift.detectAndCompute(image0, None)
+        kp1, des1 = sift.detectAndCompute(img, None)
+        mkpts0 = []
 
-    # Compute SIFT keypoints and descriptors
-    kp1, des1 = sift.detectAndCompute(image0, None)
-    kp2, des2 = sift.detectAndCompute(image1, None)
+        # Matching descriptor using KNN algorithm
+        if des1 is None or des0 is None:
+            print('MATCH NOT FOUND')
+            return []
 
-    print(des1)
-    print(des2.shape)
-
-    # FLANN parameters and initialize
-    FLANN_INDEX_KDTREE = 1
-    index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
-    search_params = dict(checks=50)  # or pass empty dictionary
-    flann = cv2.FlannBasedMatcher(index_params, search_params)
-
-    # Matching descriptor using KNN algorithm
-    if des1 is None or des2 is None:
-        return 0
-    elif len(des1) == 1 or len(des2) == 1:
-        matches = flann.knnMatch(des1, des2, k=1)
-    else:
-        matches = flann.knnMatch(des1, des2, k=2)
-
-
-    if len(matches[0]) == 1:
-        return 0
-
-    # Create a mask to draw all good matches
-    matchesMask = []
-
-    # Store all good matches as per Lowe's Ratio test.
-    good = []
-    for m, n in matches:
-        if m.distance < 0.6 * n.distance:
-            good.append(m)
-            matchesMask.append([0, 0])  # Match
+        elif len(des1) == 1 or len(des0) == 1:
+            matches = flann.knnMatch(des1, des0, k=1)
         else:
-            matchesMask.append([0, 0])  # Mismatch
+            matches = flann.knnMatch(des1, des0, k=2)
+
+        if len(matches) == 0:
+            print('MATCH NOT FOUND')
+            return []
+
+        # Find good matches
+        for match in matches:
+            if len(match) != 1:
+                if match[0].distance < 0.65 * match[1].distance:
+                    mkpts0.append(kp0[match[0].trainIdx].pt)
+            else:
+                mkpts0.append(kp0[match[0].trainIdx].pt)
+
+        if len(mkpts0) != 0:
+            if len(mkpts0) > len(max_mpts0):
+                max_mpts0 = mkpts0
+
+    # Discard outliers
+    for i in range(3):
+        max_mpts0, single_point = discard_outliers(max_mpts0)
+
+    # Calculate image coordinates in asset
+    if len(max_mpts0) > 0:
+        mean_p = np.mean(max_mpts0, axis=0)
+        print("Suggested coordinates = ", (mean_p[0], mean_p[1]))
+
+        # Plot match
+        if show_match:
+            plot_image_pair([image0, image1])
+            plot_matches(False, max_mpts0, single_point)
+
+        return mean_p
+
+    print('MATCH NOT FOUND')
+    return []
 
 
-    # Draw all good matches
-    draw_params = dict(  # matchColor = (0,255,0),  #If you want a specific colour
-        # singlePointColor = (255,0,0), #If you want a specific colour
-        matchesMask=matchesMask,
-        flags=cv2.DrawMatchesFlags_DEFAULT)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='PICMATCHING')
+    parser.add_argument('-asset', default=None)
+    parser.add_argument('-img', default=None)
+    parser.add_argument('-batch', default=None)
+    parser.add_argument('-show_match', default=False)
+    args = parser.parse_args()
 
-    good_matches = cv2.drawMatchesKnn(image0, kp1, image1, kp2, matches, None, **draw_params)
-
-    plt.figure(figsize=(15, 15))
-
-    plt.imshow(good_matches)
-    plt.title('All good matches')
-    plt.axis('off')
-
-    plt.show()
-
-    MIN_MATCH_NUM = 1
-
-    if len(good) >= MIN_MATCH_NUM:
-        return 1
+    print('---------------MATCH START---------------')
+    start_time = time.time()
+    if args.batch == None:
+        feature_matching(args.asset, args.img, args.show_match)
     else:
-        return 0
+        file = pd.read_csv(args.batch)
+        matches = pd.DataFrame({'asset': [],'img': [], 'coordinates': []}, dtype=object)
+        for i in range(len(file)):
+            prediction = feature_matching(file.iloc[i,0], file.iloc[i,1], False)
+            if len(prediction) == 2:
+                matches.loc[len(matches.index)] = [file.iloc[i,0], file.iloc[i,1], prediction]
+            elif len(prediction) == 3:
+                matches.loc[len(matches.index)] = [file.iloc[i, 0], file.iloc[i, 1], 'MATCH NOT FOUND']
 
-
-data = pd.read_csv("data/test/labels.csv")
-
-# Ratio of positive to negative samples = 1:3
-neg_data = data.iloc[:273908,:]
-neg_data = neg_data.sample(frac=1)
-neg_data = neg_data.iloc[:22500,:]
-
-pos_data= data.iloc[273908:273908+7500,:]
-
-mixed_data = pd.concat([pos_data, neg_data])
-mixed_data = mixed_data.sample(frac=1)
-
-
-# shuffle pos data
-pos_data= data.iloc[273908:273908+7500,:]
-pos_data = pos_data.sample(frac=1)
-
-# shuffle neg data
-neg_data = data.iloc[:273908,:]
-neg_data = neg_data.sample(frac=1)
-neg_data = neg_data.iloc[:7500,:]
-
-
-
-# shuffle data
-# data = data.sample(frac=1)
-
-img_root = "data/test/temp/"
-asset_root = "data/test/img/"
-
-# Single instance testing
-# plt.axis('off')
-# idx = 275174
-# prediction = feature_matching(os.path.join(asset_root, data.iloc[idx, 0]), os.path.join(img_root, data.iloc[idx, 1]), 0)
-
-
-
-# Recall = (TP/TP+FN)
-num_correct_predictions = 0
-l_acc = []
-l_batch_no = []
-
-for i in range(len(pos_data)):
-    prediction = feature_matching(os.path.join(asset_root, pos_data.iloc[i, 0]), os.path.join(img_root, pos_data.iloc[i, 1]), 0)
-    hf_prediction = feature_matching(os.path.join(asset_root, pos_data.iloc[i, 0]), os.path.join(img_root, pos_data.iloc[i, 1]), 1)
-
-    if prediction == int(pos_data.iloc[i, 2]) or hf_prediction == int(pos_data.iloc[i, 2]):
-        num_correct_predictions += 1
-
-    if (i+1) % 500 == 0:
-        batch_no = int((i+1) / 500)
-        l_batch_no.append(batch_no)
-        print("number of predictions: ", i+1)
-
-        accuracy = num_correct_predictions / (i+1)
-        l_acc.append(accuracy)
-        print("current accuracy is: ", accuracy)
-
-# plot the figure
-plt.figure()
-plt.plot(l_batch_no, l_acc)
-plt.xticks(range(1, max(l_batch_no)+1))
-plt.savefig('recall_result.png')
-
-
-# Specificity = TN/TN+FP
-num_correct_predictions = 0
-l_acc = []
-l_batch_no = []
-
-for i in range(len(neg_data)):
-    prediction = feature_matching(os.path.join(asset_root, neg_data.iloc[i, 0]), os.path.join(img_root, neg_data.iloc[i, 1]), 0)
-    hf_prediction = feature_matching(os.path.join(asset_root, neg_data.iloc[i, 0]), os.path.join(img_root, neg_data.iloc[i, 1]), 1)
-
-    if prediction == int(neg_data.iloc[i, 2]) or hf_prediction == int(neg_data.iloc[i, 2]):
-        num_correct_predictions += 1
-
-    if (i+1) % 500 == 0:
-        batch_no = int((i+1)/500)
-        l_batch_no.append(batch_no)
-        print("number of predictions: ", i+1)
-        accuracy = num_correct_predictions/(i+1)
-        l_acc.append(accuracy)
-        print("current accuracy is: ", num_correct_predictions/(i+1))
-
-# plot the figure
-plt.figure()
-plt.plot(l_batch_no, l_acc)
-plt.xticks(range(1, max(l_batch_no)+1))
-plt.savefig('specificity_result.png')
-
-
-# Accuracy = (TP+TN)/(TP+FP+TN+FN)
-num_correct_predictions = 0
-l_acc = []
-l_batch_no = []
-
-for i in range(len(mixed_data)):
-    prediction = feature_matching(os.path.join(asset_root, mixed_data.iloc[i, 0]), os.path.join(img_root, mixed_data.iloc[i, 1]), 0)
-    hf_prediction = feature_matching(os.path.join(asset_root, mixed_data.iloc[i, 0]), os.path.join(img_root, mixed_data.iloc[i, 1]), 1)
-
-    if prediction == int(mixed_data.iloc[i, 2]) or hf_prediction == int(mixed_data.iloc[i, 2]):
-        num_correct_predictions += 1
-
-    if (i+1) % 2000 == 0:
-        batch_no = int((i+1)/2000)
-        l_batch_no.append(batch_no)
-        print("number of predictions: ", i+1)
-        accuracy = num_correct_predictions/(i+1)
-        l_acc.append(accuracy)
-        print("current accuracy is: ", accuracy)
-
-# plot the figure
-plt.figure()
-plt.plot(l_batch_no, l_acc)
-plt.xticks(range(1, max(l_batch_no)+1))
-plt.savefig('accuracy_result.png')
-
-
-
-
-
-
-
-
-
-
+        matches.to_csv("results.csv", index=False)
+    print('---------------MATCH END---------------')
+    print('Total matching time = %.2fs' % (time.time()-start_time))
 
