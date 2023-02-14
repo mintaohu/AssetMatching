@@ -1,7 +1,3 @@
 .idea/
 data/
-simpletest/
-
-*.txt
-*.png
-ORB.py
+t_data/

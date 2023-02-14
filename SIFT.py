@@ -91,6 +91,7 @@ def feature_matching(asset, img, show_match):
 
         # Plot match
         if show_match:
+
             plot_image_pair([image0, image1])
             plot_matches(False, max_mpts0, single_point)
 

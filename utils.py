@@ -69,6 +69,7 @@ def plot_matches(show_selection, kpts0, single_point, lw=1.5, ps=4):
     # Scatter single matching point
     if single_point:
         ax[0].scatter(kpts0[0][0], kpts0[0][1], c='r', s=ps)
+        plt.show()
         return
 
     # Show selection
@@ -101,6 +102,7 @@ def plot_matches(show_selection, kpts0, single_point, lw=1.5, ps=4):
         ax[0].scatter(mean_p[0],mean_p[1], c='r', s=ps)
 
     plt.show()
+    return
 
 # Read image info from plist
 def find_image(coordinate_str):
