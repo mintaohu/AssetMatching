@@ -3,6 +3,7 @@ import numpy as np
 import argparse
 import pandas as pd
 import time
+from PIL import Image
 
 from utils import discard_outliers, plot_image_pair, plot_matches, find_image
 
@@ -21,8 +22,12 @@ def feature_matching(asset, img, show_match):
     flann = cv2.FlannBasedMatcher(index_params, search_params)
 
     # Read in images from a filepath as graycsale.
-    image0 = cv2.imread(asset, cv2.IMREAD_GRAYSCALE)
-    image1 = cv2.imread(img, cv2.IMREAD_GRAYSCALE)
+    im0 = Image.open(asset).convert("L")
+    im1 = Image.open(img).convert("L")
+
+    image0 = np.array(im0)
+    image1 = np.array(im1)
+
     if image0 is None:
         print('ASSET NOT FOUND')
         return [1, 2, 3]
