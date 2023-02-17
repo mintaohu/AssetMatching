@@ -5,7 +5,7 @@ import matplotlib
 
 
 # Detect outliers by z-score iteration
-def discard_outliers(kpts0):
+def discard_outliers(outlier_threshold, kpts0):
     kpts0 = np.array(kpts0)
 
     if len(kpts0) == 1 or len(kpts0) == 0:
@@ -25,10 +25,9 @@ def discard_outliers(kpts0):
         return kpts0, True
 
     outlier = []
-    threshold = 0
     for i in range(len(man_dist)):
         z = (man_dist[i] - mean_dist) / std_dist
-        if z > threshold:
+        if z > outlier_threshold:
             outlier.append(i)
 
     # Discard outliers
